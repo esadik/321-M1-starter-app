@@ -4,7 +4,7 @@ FROM node:20.6-alpine
 
 WORKDIR /app
 
-COPY backend/package*.json ./backend
+COPY backend/package*.json ./
 
 RUN npm ci
 
