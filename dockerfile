@@ -10,6 +10,8 @@ RUN npm ci
 
 COPY . .
 
+RUN npm run build
+
 EXPOSE $PORT 
 
 CMD ["npm", "start"]
