@@ -1,11 +1,16 @@
 package com.cpen321.usermanagement.ui.screens
 
 import Icon
+import android.R.attr.spacing
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -15,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -25,21 +31,35 @@ import androidx.compose.ui.text.font.FontWeight
 import com.cpen321.usermanagement.R
 import com.cpen321.usermanagement.ui.components.MessageSnackbar
 import com.cpen321.usermanagement.ui.components.MessageSnackbarState
+import com.cpen321.usermanagement.ui.screens.WelcomeMessage
 import com.cpen321.usermanagement.ui.viewmodels.MainUiState
 import com.cpen321.usermanagement.ui.viewmodels.MainViewModel
 import com.cpen321.usermanagement.ui.theme.LocalFontSizes
 import com.cpen321.usermanagement.ui.theme.LocalSpacing
+import com.cpen321.usermanagement.ui.viewmodels.ProfileUiState
+import com.cpen321.usermanagement.ui.viewmodels.ProfileViewModel
 
 @Composable
 fun MainScreen(
     mainViewModel: MainViewModel,
+    profileViewModel: ProfileViewModel,
     onProfileClick: () -> Unit
 ) {
     val uiState by mainViewModel.uiState.collectAsState()
+    val profileUiState by profileViewModel.uiState.collectAsState()
     val snackBarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(profileUiState.selectedHobbies) {
+        if (profileUiState.selectedHobbies.isNotEmpty()) {
+            profileViewModel.loadHobbyNews()
+        } else {
+            profileViewModel.loadProfile()
+        }
+    }
 
     MainContent(
         uiState = uiState,
+        profileUiState = profileUiState,
         snackBarHostState = snackBarHostState,
         onProfileClick = onProfileClick,
         onSuccessMessageShown = mainViewModel::clearSuccessMessage
@@ -49,6 +69,7 @@ fun MainScreen(
 @Composable
 private fun MainContent(
     uiState: MainUiState,
+    profileUiState: ProfileUiState,
     snackBarHostState: SnackbarHostState,
     onProfileClick: () -> Unit,
     onSuccessMessageShown: () -> Unit,
@@ -67,7 +88,10 @@ private fun MainContent(
             )
         }
     ) { paddingValues ->
-        MainBody(paddingValues = paddingValues)
+        MainBody(
+            paddingValues = paddingValues,
+            profileUiState = profileUiState
+        )
     }
 }
 
@@ -148,15 +172,54 @@ private fun MainSnackbarHost(
 @Composable
 private fun MainBody(
     paddingValues: PaddingValues,
+    profileUiState: ProfileUiState,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    val spacing = LocalSpacing.current
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    androidx.compose.foundation.lazy.LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(spacing.large),
         modifier = modifier
             .fillMaxSize()
-            .padding(paddingValues),
-        contentAlignment = Alignment.Center
+            .padding(paddingValues)
+            .padding(spacing.large)
     ) {
-        WelcomeMessage()
+        item {
+            WelcomeMessage()
+            if (profileUiState.isLoadingNews) {
+                CircularProgressIndicator()
+            } else {
+                Text(
+                    text = "Latest news in your hobbies",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+
+        if (!profileUiState.isLoadingNews) {
+            items(profileUiState.hobbyNews.take(5)) { article ->
+                androidx.compose.material3.Card(
+                    onClick = {
+                        val intent = android.content.Intent(
+                            android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse(article.url)
+                        )
+                        context.startActivity(intent)
+                    }
+                ) {
+                    androidx.compose.foundation.layout.Column(
+                        Modifier.padding(spacing.medium)
+                    ) {
+                        Text(article.title, fontWeight = FontWeight.Medium)
+                        article.description?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

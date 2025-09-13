@@ -39,6 +39,14 @@ object RetrofitClient {
     val userInterface: UserInterface = retrofit.create(UserInterface::class.java)
     val hobbyInterface: HobbyInterface = retrofit.create(HobbyInterface::class.java)
 
+    val newsApiService: NewsApiService by lazy {
+        Retrofit.Builder()
+            .baseUrl("https://newsapi.org/v2/")
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(NewsApiService::class.java)
+    }
+
     fun setAuthToken(token: String?) {
         authToken = token
     }

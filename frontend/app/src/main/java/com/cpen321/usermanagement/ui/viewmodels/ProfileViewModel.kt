@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.cpen321.usermanagement.data.remote.dto.User
 import com.cpen321.usermanagement.data.repository.ProfileRepository
+import com.cpen321.usermanagement.data.repository.NewsRepository
+import com.cpen321.usermanagement.data.remote.api.Article
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,11 +20,13 @@ data class ProfileUiState(
     val isLoadingProfile: Boolean = false,
     val isSavingProfile: Boolean = false,
     val isLoadingPhoto: Boolean = false,
+    val isLoadingNews: Boolean = false,
 
     // Data states
     val user: User? = null,
     val allHobbies: List<String> = emptyList(),
     val selectedHobbies: Set<String> = emptySet(),
+    val hobbyNews: List<Article> = emptyList(),
 
     // Message states
     val errorMessage: String? = null,
@@ -31,7 +35,8 @@ data class ProfileUiState(
 
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
-    private val profileRepository: ProfileRepository
+    private val profileRepository: ProfileRepository,
+    private val newsRepository: NewsRepository
 ) : ViewModel() {
 
     companion object {
@@ -84,6 +89,37 @@ class ProfileViewModel @Inject constructor(
                     errorMessage = errorMessage
                 )
             }
+        }
+    }
+
+    fun loadHobbyNews() {
+        viewModelScope.launch {
+            val hobbies = _uiState.value.selectedHobbies
+            if (hobbies.isEmpty()) {
+                _uiState.value = _uiState.value.copy(
+                    isLoadingNews = false,
+                    hobbyNews = emptyList()
+                )
+                return@launch
+            }
+            _uiState.value = _uiState.value.copy(isLoadingNews = true)
+            val all = mutableListOf<Article>()
+            var firstError: String? = null
+
+            for (h in hobbies) {
+                val result = newsRepository.getNewsForHobby(h)
+                if (result.isSuccess) {
+                    all += result.getOrDefault(emptyList())
+                } else if (firstError == null) {
+                    firstError = result.exceptionOrNull()?.message
+                }
+            }
+            val shuffled = all.shuffled().take(10)
+            _uiState.value = _uiState.value.copy(
+                hobbyNews = shuffled,
+                isLoadingNews = false,
+                errorMessage = firstError
+            )
         }
     }
 
