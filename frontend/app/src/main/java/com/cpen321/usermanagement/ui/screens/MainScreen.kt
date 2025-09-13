@@ -49,12 +49,11 @@ fun MainScreen(
     val profileUiState by profileViewModel.uiState.collectAsState()
     val snackBarHostState = remember { SnackbarHostState() }
 
+    LaunchedEffect(Unit) {
+        profileViewModel.loadProfile()
+    }
     LaunchedEffect(profileUiState.selectedHobbies) {
-        if (profileUiState.selectedHobbies.isNotEmpty()) {
-            profileViewModel.loadHobbyNews()
-        } else {
-            profileViewModel.loadProfile()
-        }
+        profileViewModel.loadHobbyNews()
     }
 
     MainContent(
