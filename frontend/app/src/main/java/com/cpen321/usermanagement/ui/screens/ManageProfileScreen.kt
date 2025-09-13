@@ -62,7 +62,8 @@ private data class ProfileFormState(
     val email: String = "",
     val bio: String = "",
     val originalName: String = "",
-    val originalBio: String = ""
+    val originalBio: String = "",
+    val profilePicture: String? = null
 ) {
     fun hasChanges(): Boolean {
         return (name.isNotBlank() && name != originalName) ||
@@ -144,8 +145,8 @@ fun ManageProfileScreen(
                 email = user.email,
                 bio = user.bio ?: "",
                 originalName = user.name,
-                originalBio = user.bio ?: ""
-            )
+                originalBio = user.bio ?: "",
+                profilePicture = user.profilePicture,
         }
     }
 
@@ -155,7 +156,7 @@ fun ManageProfileScreen(
         onBioChange = { formState = formState.copy(bio = it) },
         onEditPictureClick = { showImagePickerDialog = true },
         onSaveClick = {
-            profileViewModel.updateProfile(formState.name, formState.bio)
+            profileViewModel.updateProfile(name = formState.name, bio = formState.bio, profilePicture = formState.profilePicture ?: "")
         },
         onImagePickerDismiss = { showImagePickerDialog = false },
         onImageSelected = { uri ->
