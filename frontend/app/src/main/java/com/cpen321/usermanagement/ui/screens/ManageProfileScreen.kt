@@ -147,6 +147,7 @@ fun ManageProfileScreen(
                 originalName = user.name,
                 originalBio = user.bio ?: "",
                 profilePicture = user.profilePicture,
+            )
         }
     }
 
