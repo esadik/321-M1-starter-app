@@ -219,4 +219,22 @@ class ProfileViewModel @Inject constructor(
             }
         }
     }
+
+    fun deleteProfile() {
+        viewModelScope.launch {
+            val result = profileRepository.deleteProfile()
+            if (result.isSuccess) {
+                _uiState.value = _uiState.value.copy(
+                    successMessage = "Profile deleted successfully!"
+                )
+            } else {
+                val error = result.exceptionOrNull()
+                Log.e(TAG, "Failed to delete profile", error)
+                val errorMessage = error?.message ?: "Failed to delete profile"
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = errorMessage
+                )
+            }
+        }
+    }
 }
