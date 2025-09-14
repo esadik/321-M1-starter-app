@@ -185,7 +185,41 @@ class ProfileViewModel @Inject constructor(
     fun uploadProfilePicture(pictureUri: Uri) {
         viewModelScope.launch {
             val currentUser = _uiState.value.user ?: return@launch
+            _uiState.value = _uiState.value.copy(
+                isLoadingPhoto = true,
+                errorMessage = null,
+                successMessage = null
+            )
+
             val updatedUser = currentUser.copy(profilePicture = pictureUri.toString())
+            val result = profileRepository.uploadProfilePicture(pictureUri)
+            if (result.isSuccess) {
+//                val updatedUser = _uiState.value.user!!.copy(profilePicture = result.getOrThrow())
+//                _uiState.value = _uiState.value.copy(isLoadingPhoto = false, user = updatedUser, successMessage = "Profile picture updated successfully!")
+                val newPath = result.getOrThrow()
+
+                val save = profileRepository.updateProfile(
+                    name = currentUser.name,
+                    bio = currentUser.bio ?: "",
+                    profilePicture = newPath
+                )
+
+                if (save.isSuccess) {
+                    val savedUser = save.getOrThrow()
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingPhoto = false,
+                        user = savedUser,
+                        successMessage = "Profile picture updated successfully!"
+                    )
+                } else {
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingPhoto = false,
+                        errorMessage = save.exceptionOrNull()?.message ?: "Failed to save picture"
+                    )
+                }
+            } else {
+                _uiState.value = _uiState.value.copy(isLoadingPhoto = false, errorMessage = result.exceptionOrNull()?.message ?: "Failed to upload picture")
+            }
             _uiState.value = _uiState.value.copy(isLoadingPhoto = false, user= updatedUser, successMessage = "Profile picture updated successfully!")
         }
     }

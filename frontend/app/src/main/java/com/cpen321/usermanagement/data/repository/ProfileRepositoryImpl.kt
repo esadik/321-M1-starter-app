@@ -5,9 +5,9 @@ import android.net.Uri
 import android.util.Log
 import com.cpen321.usermanagement.data.local.preferences.TokenManager
 import com.cpen321.usermanagement.data.remote.api.HobbyInterface
-import com.cpen321.usermanagement.data.remote.api.ImageInterface
 import com.cpen321.usermanagement.data.remote.api.RetrofitClient
 import com.cpen321.usermanagement.data.remote.api.UserInterface
+import com.cpen321.usermanagement.data.remote.api.ImageInterface
 import com.cpen321.usermanagement.data.remote.dto.UpdateProfileRequest
 import com.cpen321.usermanagement.data.remote.dto.User
 import com.cpen321.usermanagement.utils.JsonUtils.parseErrorMessage
@@ -24,6 +24,7 @@ class ProfileRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val userInterface: UserInterface,
     private val hobbyInterface: HobbyInterface,
+    private val imageInterface: ImageInterface,
     private val tokenManager: TokenManager
 ) : ProfileRepository {
 
@@ -114,6 +115,41 @@ class ProfileRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun uploadProfilePicture(pictureUri: Uri): Result<String> {
+        return try {
+            val file = uriToFile(context, pictureUri)
+            val part = MultipartBody.Part.createFormData(
+                "media", file.name, file.asRequestBody("image/*".toMediaType())
+            )
+            val response = imageInterface.uploadPicture("", part)
+            if (response.isSuccessful && response.body()?.data != null) {
+                Log.e(
+                    TAG,
+                    "Profile picture uploaded successfully: ${response.body()!!.data!!.image}"
+                )
+                Result.success(response.body()!!.data!!.image)
+            } else {
+                val errorBodyString = response.errorBody()?.string()
+                val errorMessage =
+                    parseErrorMessage(errorBodyString, "Failed to upload picture.")
+                Log.e(TAG, "Failed to upload picture: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: java.net.SocketTimeoutException) {
+            Log.e(TAG, "Network timeout while uploading picture", e)
+            Result.failure(e)
+        } catch (e: java.net.UnknownHostException) {
+            Log.e(TAG, "Network connection failed while uploading picture", e)
+            Result.failure(e)
+        } catch (e: java.io.IOException) {
+            Log.e(TAG, "IO error while uploading picture", e)
+            Result.failure(e)
+        } catch (e: retrofit2.HttpException) {
+            Log.e(TAG, "HTTP error while uploading picture: ${e.code()}", e)
+            Result.failure(e)
+        }
+    }
+
     override suspend fun updateUserHobbies(hobbies: List<String>): Result<User> {
         return try {
             val updateRequest = UpdateProfileRequest(hobbies = hobbies)
@@ -144,7 +180,8 @@ class ProfileRepositoryImpl @Inject constructor(
 
     override suspend fun getAvailableHobbies(): Result<List<String>> {
         return try {
-            val response = hobbyInterface.getAvailableHobbies("") // Auth header is handled by interceptor
+            val response =
+                hobbyInterface.getAvailableHobbies("") // Auth header is handled by interceptor
             if (response.isSuccessful && response.body()?.data != null) {
                 Result.success(response.body()!!.data!!.hobbies)
             } else {
